@@ -1,105 +1,184 @@
 ﻿using System;
+using System.Collections.Generic;
 
-namespace Sekolah
+namespace MBGApp
 {
     class Sekolah
     {
         public string idSekolah;
         public string namaSekolah;
         public int jumlahPaketDiterima;
-        public void tampilInfo()
+
+        public Sekolah(string id, string nama)
         {
-            Console.WriteLine($"sekolah meliputi {idSekolah} dan {namaSekolah} mendapat sebanyak {jumlahPaketDiterima}.");
+            idSekolah = id;
+            namaSekolah = nama;
+            jumlahPaketDiterima = 0;
+        }
+
+        public void TampilInfo()
+        {
+            Console.WriteLine($"ID: {idSekolah} | Nama: {namaSekolah} | Paket diterima: {jumlahPaketDiterima}");
         }
     }
-    class paketMBG
+
+    abstract class PaketMBG
     {
-        private string idPaket { get; set; }
-        private string namaPaket { get; set; }
-        private int StokDapur
+        private string idPaket;
+        private string namaPaket;
+        private int stokDapur;
+
+        public string IdPaket
         {
-            get
-            {
-                return StokDapur;
-            }
+            get { return idPaket; }
+            set { idPaket = value; }
+        }
+
+        public string NamaPaket
+        {
+            get { return namaPaket; }
+            set { namaPaket = value; }
+        }
+
+        public int StokDapur
+        {
+            get { return stokDapur; }
             private set
             {
-                if (value >= 0)
-                {
-                    StokDapur = value;
-                }
-                else
-                {
-                    Console.WriteLine("Stokdapur tidak boleh negatif!");
-                }
+                if (value >= 0) stokDapur = value;
+                else Console.WriteLine("Stok dapur tidak boleh negatif!");
             }
         }
-        public virtual void KurangiStok(int jumlah)
+
+        protected PaketMBG(string id, string nama, int stok)
+        {
+            idPaket = id;
+            namaPaket = nama;
+            StokDapur = stok;
+        }
+
+        public bool KurangiStok(int jumlah)
         {
             if (jumlah <= 0)
             {
-                Console.WriteLine(
-                    "Jumlah stok tidak cukup."
-                );
+                Console.WriteLine("Jumlah pengurangan harus lebih dari 0.");
+                return false;
             }
-            else if (jumlah > StokDapur)
+            if (jumlah > stokDapur)
             {
-                Console.WriteLine(
-                    "Stok tidak mencukupi."
-                );
+                Console.WriteLine("Stok tidak mencukupi.");
+                return false;
             }
-            else
+            StokDapur = stokDapur - jumlah;
+            return true;
+        }
+
+        public abstract int HitungBiaya(int jumlah);
+    }
+
+    class PaketReguler : PaketMBG
+    {
+        public string Isi = "Nasi, ayam, sayur, dan buah";
+
+        public PaketReguler(string id, string nama, int stok)
+            : base(id, nama, stok) { }
+
+        public override int HitungBiaya(int jumlah) => jumlah * 15000;
+    }
+
+    class PaketKhusus : PaketMBG
+    {
+        public string JenisDiet { get; set; }
+
+        public PaketKhusus(string id, string nama, int stok, string jenisDiet)
+            : base(id, nama, stok)
+        {
+            JenisDiet = jenisDiet;
+        }
+
+        public override int HitungBiaya(int jumlah) => jumlah * 20000;
+    }
+
+    interface DapatDidistribusikan
+    {
+        void KirimPaket();
+    }
+
+    class DistribusiMBG : DapatDidistribusikan
+    {
+        private Sekolah sekolahTujuan;
+        private PaketMBG paket;
+        private int jumlah;
+
+        public DistribusiMBG(Sekolah sekolah, PaketMBG paket, int jumlah)
+        {
+            this.sekolahTujuan = sekolah;
+            this.paket = paket;
+            this.jumlah = jumlah;
+        }
+
+        public void KirimPaket()
+        {
+            if (jumlah <= 0)
             {
-                StokDapur -= jumlah;
-                Console.WriteLine(
-                    $"Stok mencukupi sebanyak: {jumlah}"
-                );
+                Console.WriteLine("Distribusi gagal: jumlah paket harus lebih dari 0.");
+                return;
             }
+            if (jumlah > paket.StokDapur)
+            {
+                Console.WriteLine($"Distribusi gagal: jumlah ({jumlah}) melebihi stok dapur ({paket.StokDapur}).");
+                return;
+            }
+
+            paket.KurangiStok(jumlah);
+            sekolahTujuan.jumlahPaketDiterima += jumlah;
+            Console.WriteLine($"Distribusi MBG berhasil! Sebanyak {jumlah} paket makanan telah dikirim ke sekolah {sekolahTujuan.namaSekolah}");
         }
     }
 
-    class PaketReguler : paketMBG
+    class PengelolaMBG
     {
-        public string Makanan;
-        public int HargaPaket;
-        public PaketReguler(string idpaket, string namapaket, string makanan, int hargapaket)
-        {
-            this.Makanan = makanan;
-            this.HargaPaket = hargapaket;
-        }
+        private List<Sekolah> daftarSekolah = new List<Sekolah>();
+        private List<PaketMBG> daftarPaket = new List<PaketMBG>();
 
-        public void KurangiStok(int jumlah)
-        {
+        public void TambahSekolah(Sekolah sekolah) => daftarSekolah.Add(sekolah);
+        public void TambahPaket(PaketMBG paket) => daftarPaket.Add(paket);
 
+        public void TampilkanDataMBG()
+        {
+            Console.WriteLine("=== Data Sekolah ===");
+            foreach (var s in daftarSekolah) s.TampilInfo();
+
+            Console.WriteLine("=== Data Paket ===");
+            foreach (var p in daftarPaket)
+                Console.WriteLine($"ID: {p.IdPaket} | {p.NamaPaket} | Stok: {p.StokDapur}");
         }
     }
 
-    class PaketKhusus : paketMBG
+    class Program
     {
-        public string Makanan;
-        public int HargaPaket;
-
-        public PaketKhusus(string idpaket, string namapaket, string makanan, int hargapaket)
+        static void Main()
         {
-            this.Makanan = makanan;
-            this.HargaPaket = hargapaket;
-        }
+            Sekolah s1 = new Sekolah("S01", "SDN 1 Jember");
+            Sekolah s2 = new Sekolah("S02", "SMPN 2 Jember");
+            s1.TampilInfo();
+            s2.TampilInfo();
 
-        public void KurangiStok(int jumlah)
-        {
-            Console.WriteLine();
+            PaketMBG p1 = new PaketReguler("P01", "Paket Reguler", 100);
+            PaketMBG p2 = new PaketKhusus("P02", "Paket Khusus", 50, "Vegetarian");
+            Console.WriteLine($"Biaya reguler 10 paket: Rp{p1.HitungBiaya(10)}");
+            Console.WriteLine($"Biaya khusus 10 paket : Rp{p2.HitungBiaya(10)}");
+
+            new DistribusiMBG(s1, p1, 30).KirimPaket();   
+            new DistribusiMBG(s2, p2, 100).KirimPaket();  
+            new DistribusiMBG(s2, p2, 0).KirimPaket();    
+
+            PengelolaMBG pengelola = new PengelolaMBG();
+            pengelola.TambahSekolah(s1);
+            pengelola.TambahSekolah(s2);
+            pengelola.TambahPaket(p1);
+            pengelola.TambahPaket(p2);
+            pengelola.TampilkanDataMBG();
         }
     }
-
-    class program
-    {
-        static void main()
-        {
-            PaketReguler paketreguler1 = new PaketReguler("01", "PaketReguler", "nasi,ayam,sayur,buah", 15000);
-            Console.WriteLine("--- Paket Reguler ---");
-            Console.WriteLine($"ID Paket: {paketreguler1.idpaket}");
-            Console.WriteLine($"Nama Paket: {paketreguler1.namapaket}");
-            Console.WriteLine($"Makanan: {paketreguler1.Makanan}");
-            Console.WriteLine($"HargaPaket: {paketreguler1.HargaPaket}");
-        }
-    };
+}
